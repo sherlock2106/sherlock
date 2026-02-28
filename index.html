@@ -1,0 +1,2055 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sherlock — Yıldızlarda Sonsuza Dek</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=EB+Garamond:ital,wght@0,400;1,400&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    /* ─── CSS Variables ─── */
+    :root {
+      --night:    #08090f;
+      --deep:     #0d0f1e;
+      --navy:     #111530;
+      --gold:     #c9a84c;
+      --gold-lt:  #e8d08a;
+      --silver:   #c0c8e0;
+      --cream:    #f0ead8;
+      --mist:     rgba(192,200,224,0.15);
+      --fog:      rgba(192,200,224,0.06);
+    }
+
+    /* ─── INTRO OVERLAY ─── */
+    #intro {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      background: #03030a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: opacity 1.8s cubic-bezier(0.4, 0, 0.2, 1), visibility 1.8s;
+      overflow: hidden;
+    }
+    #intro.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    /* Intro star canvas sits inside overlay */
+    #introStars {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    /* Floating dust particles */
+    .dust-particle {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(201,168,76,0.5);
+      pointer-events: none;
+      animation: dustFloat linear infinite;
+    }
+
+    @keyframes dustFloat {
+      0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+      10%  { opacity: 1; }
+      90%  { opacity: 0.6; }
+      100% { transform: translateY(-110vh) translateX(var(--dx)) scale(0.3); opacity: 0; }
+    }
+
+    /* Pati — sağdan uzanıyor */
+    .intro-paw-wrap {
+      position: fixed;
+      right: -8vw;
+      bottom: 18vh;
+      z-index: 2;
+      width: clamp(260px, 38vw, 500px);
+      pointer-events: none;
+      animation: pawSlideIn 2.5s 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      opacity: 0;
+      transform: translateX(120px);
+    }
+
+    @keyframes pawSlideIn {
+      0%   { opacity: 0; transform: translateX(140px) rotate(8deg); }
+      100% { opacity: 1; transform: translateX(0)    rotate(0deg); }
+    }
+
+    /* Pati resmi */
+    #introPhoto {
+      width: 100%;
+      height: auto;
+      display: block;
+
+      /* Renk efekti — siyah-beyaz, hafif soluk */
+      filter:
+        brightness(0.72)
+        contrast(1.1)
+        drop-shadow(-12px 0 30px rgba(201,168,76,0.20))
+        drop-shadow(-30px 0 80px rgba(201,168,76,0.08));
+
+      /* Sol taraftan ve alttan eriyor — sağ taraf ekranla kaynaşıyor */
+      mask-image: linear-gradient(
+        to left,
+        rgba(0,0,0,0.95) 0%,
+        black            20%,
+        black            65%,
+        rgba(0,0,0,0.6)  80%,
+        rgba(0,0,0,0.15) 92%,
+        transparent      100%
+      );
+      -webkit-mask-image: linear-gradient(
+        to left,
+        rgba(0,0,0,0.95) 0%,
+        black            20%,
+        black            65%,
+        rgba(0,0,0,0.6)  80%,
+        rgba(0,0,0,0.15) 92%,
+        transparent      100%
+      );
+
+      animation: pawBreathe 6s 3.2s ease-in-out infinite;
+    }
+
+    @keyframes pawBreathe {
+      0%, 100% {
+        filter: brightness(0.72) contrast(1.1)
+          drop-shadow(-12px 0 30px rgba(201,168,76,0.20))
+          drop-shadow(-30px 0 80px rgba(201,168,76,0.08));
+        transform: translateY(0) rotate(0deg);
+      }
+      50% {
+        filter: brightness(0.82) contrast(1.08)
+          drop-shadow(-18px 0 45px rgba(201,168,76,0.35))
+          drop-shadow(-40px 0 100px rgba(201,168,76,0.15));
+        transform: translateY(-6px) rotate(-1deg);
+      }
+    }
+
+    /* Altın hâle — patinin sol tarafında */
+    .intro-paw-wrap::before {
+      content: '';
+      position: absolute;
+      inset: -20%;
+      background: radial-gradient(
+        ellipse 60% 70% at 30% 50%,
+        rgba(201,168,76,0.07) 0%,
+        transparent 65%
+      );
+      pointer-events: none;
+      z-index: -1;
+      animation: pawHalo 6s 3.2s ease-in-out infinite;
+    }
+    @keyframes pawHalo {
+      0%, 100% { opacity: 0.6; }
+      50%       { opacity: 1.0; }
+    }
+
+    /* Intro metin — sol-merkez, pati ile dengeli */
+    .intro-cat-wrap {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      /* Sola kaydır — sağdaki patiyle görsel denge */
+      margin-right: clamp(200px, 30vw, 420px);
+    }
+
+    #introSvgFallback {
+      width: 100%;
+      height: 100%;
+      animation: catBreathe 4s ease-in-out infinite, catReveal 3s ease forwards;
+      opacity: 0;
+      filter: drop-shadow(0 0 40px rgba(201,168,76,0.15));
+    }
+
+    @keyframes ghostReveal {
+      0%   { opacity: 0; transform: scale(0.94) translateY(8px); }
+      100% { opacity: 1; transform: scale(1)    translateY(0); }
+    }
+
+    @keyframes catReveal {
+      0%   { opacity: 0; transform: scale(0.92); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes catBreathe {
+      0%, 100% { transform: scale(1) translateY(0); filter: drop-shadow(0 0 30px rgba(201,168,76,0.12)); }
+      50%       { transform: scale(1.03) translateY(-6px); filter: drop-shadow(0 0 60px rgba(201,168,76,0.28)); }
+    }
+
+    /* Paw glow ring behind cat */
+    .intro-glow-ring {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: clamp(240px, 38vw, 420px);
+      height: clamp(240px, 38vw, 420px);
+      transform: translate(-50%, -54%);
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(201,168,76,0.06) 0%, transparent 70%);
+      animation: glowPulse 4s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes glowPulse {
+      0%, 100% { transform: translate(-50%, -54%) scale(1);   opacity: 0.7; }
+      50%       { transform: translate(-50%, -54%) scale(1.15); opacity: 1; }
+    }
+
+    /* Intro text */
+    .intro-name {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(2.8rem, 7vw, 6rem);
+      color: rgba(240,234,216,0.06);
+      letter-spacing: 0.35em;
+      margin-top: -1rem;
+      position: relative;
+      z-index: 2;
+      animation: introNameReveal 3.5s 0.5s ease forwards;
+      opacity: 0;
+      text-transform: uppercase;
+    }
+    @keyframes introNameReveal {
+      0%   { opacity: 0; letter-spacing: 0.6em; }
+      100% { opacity: 1; letter-spacing: 0.35em; }
+    }
+
+    .intro-dates-small {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: clamp(0.8rem, 1.5vw, 1rem);
+      color: rgba(201,168,76,0.35);
+      letter-spacing: 0.15em;
+      margin-top: 0.6rem;
+      position: relative;
+      z-index: 2;
+      animation: fadeIn 2s 1.5s forwards;
+      opacity: 0;
+    }
+
+    /* Click hint */
+    .intro-hint {
+      position: absolute;
+      bottom: clamp(2rem, 5vh, 4rem);
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+      z-index: 2;
+      animation: fadeIn 2s 2.5s forwards;
+      opacity: 0;
+    }
+    .intro-hint-text {
+      font-family: 'Cinzel', serif;
+      font-size: 0.62rem;
+      letter-spacing: 0.45em;
+      color: rgba(201,168,76,0.5);
+      text-transform: uppercase;
+    }
+    .intro-hint-ring {
+      width: 38px; height: 38px;
+      border: 1px solid rgba(201,168,76,0.3);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      animation: ringPulse 2.5s ease-in-out infinite;
+    }
+    .intro-hint-ring::after {
+      content: '';
+      width: 8px; height: 8px;
+      background: rgba(201,168,76,0.6);
+      border-radius: 50%;
+    }
+    @keyframes ringPulse {
+      0%, 100% { transform: scale(1);   box-shadow: 0 0 0   0 rgba(201,168,76,0); }
+      50%       { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(201,168,76,0); }
+    }
+
+    /* Ripple on click */
+    .intro-ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(201,168,76,0.12);
+      transform: scale(0);
+      animation: rippleOut 1.2s ease forwards;
+      pointer-events: none;
+    }
+    @keyframes rippleOut {
+      to { transform: scale(40); opacity: 0; }
+    }
+
+    /* Body locked during intro */
+    body.intro-active {
+      overflow: hidden;
+    }
+
+    /* ─── Reset ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      background: var(--night);
+      color: var(--silver);
+      cursor: none;
+      overflow-x: hidden;
+    }
+
+    /* ─── Custom Cursor ─── */
+    #cursor {
+      position: fixed;
+      width: 10px; height: 10px;
+      background: var(--gold);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 10000;
+      transform: translate(-50%,-50%);
+      transition: transform 0.05s, width 0.2s, height 0.2s, background 0.2s;
+      mix-blend-mode: screen;
+    }
+    a:hover ~ #cursor, button:hover ~ #cursor { transform: translate(-50%,-50%) scale(2.5); }
+
+    /* ─── Paw Print Canvas ─── */
+    #pawCanvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 9998;
+    }
+
+    /* ─── Star Canvas ─── */
+    #starCanvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── Scrollbar ─── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--night); }
+    ::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      z-index: 1000;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.4rem 3rem;
+      background: linear-gradient(to bottom, rgba(8,9,15,0.95), transparent);
+      backdrop-filter: blur(4px);
+    }
+    .nav-logo {
+      font-family: 'Cinzel', serif;
+      font-size: 1.1rem;
+      color: var(--gold);
+      letter-spacing: 0.15em;
+      text-decoration: none;
+    }
+    .nav-links { display: flex; gap: 2.5rem; list-style: none; }
+    .nav-links a {
+      font-family: 'Cinzel', serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      color: var(--silver);
+      text-decoration: none;
+      text-transform: uppercase;
+      transition: color 0.3s;
+      position: relative;
+    }
+    .nav-links a::after {
+      content: '';
+      position: absolute; left: 0; bottom: -3px;
+      width: 0; height: 1px;
+      background: var(--gold);
+      transition: width 0.3s;
+    }
+    .nav-links a:hover { color: var(--gold); }
+    .nav-links a:hover::after { width: 100%; }
+
+    /* ─── HERO ─── */
+    #hero {
+      position: relative;
+      height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      z-index: 1;
+      overflow: hidden;
+    }
+    .hero-glow {
+      position: absolute;
+      width: 600px; height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-subtitle {
+      font-family: 'Cinzel', serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.4em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+      opacity: 0;
+      animation: fadeUp 1s 0.3s forwards;
+    }
+    .hero-title {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(3.5rem, 9vw, 8rem);
+      font-weight: 700;
+      color: var(--cream);
+      line-height: 1;
+      letter-spacing: 0.05em;
+      text-shadow: 0 0 80px rgba(201,168,76,0.3), 0 2px 40px rgba(0,0,0,0.8);
+      opacity: 0;
+      animation: fadeUp 1s 0.6s forwards;
+    }
+    .hero-dates {
+      margin-top: 1.2rem;
+      font-size: 1.1rem;
+      font-style: italic;
+      color: var(--gold-lt);
+      letter-spacing: 0.1em;
+      opacity: 0;
+      animation: fadeUp 1s 0.9s forwards;
+    }
+    .hero-tagline {
+      margin-top: 2.5rem;
+      font-size: 1.35rem;
+      font-style: italic;
+      color: var(--silver);
+      max-width: 480px;
+      line-height: 1.7;
+      opacity: 0;
+      animation: fadeUp 1s 1.2s forwards;
+    }
+    .scroll-hint {
+      position: absolute;
+      bottom: 2.5rem;
+      display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+      font-family: 'Cinzel', serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.3em;
+      color: var(--gold);
+      opacity: 0;
+      animation: fadeIn 1s 2s forwards;
+    }
+    .scroll-hint .line {
+      width: 1px; height: 50px;
+      background: linear-gradient(to bottom, var(--gold), transparent);
+      animation: scrollLine 2s 2s infinite;
+    }
+
+    /* ─── SECTION COMMON ─── */
+    section {
+      position: relative;
+      z-index: 1;
+    }
+    .section-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+    .section-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.45em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    .section-title {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      font-weight: 600;
+      color: var(--cream);
+      line-height: 1.2;
+    }
+    .divider {
+      width: 80px; height: 1px;
+      background: linear-gradient(to right, transparent, var(--gold), transparent);
+      margin: 1.5rem 0 2.5rem;
+    }
+
+    /* ─── ABOUT ─── */
+    #about {
+      padding: 130px 0 100px;
+      background: linear-gradient(to bottom, var(--night), var(--deep) 50%, var(--night));
+    }
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5rem;
+      align-items: center;
+    }
+    .about-photo-frame {
+      position: relative;
+    }
+    .about-photo-frame::before {
+      content: '';
+      position: absolute;
+      inset: -12px;
+      border: 1px solid rgba(201,168,76,0.25);
+      border-radius: 4px;
+    }
+    .about-photo-frame::after {
+      content: '';
+      position: absolute;
+      inset: -24px;
+      border: 1px solid rgba(201,168,76,0.1);
+      border-radius: 4px;
+    }
+    .photo-slot {
+      width: 100%;
+      aspect-ratio: 3/4;
+      background: linear-gradient(135deg, var(--navy), var(--deep));
+      border-radius: 4px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 1rem;
+      border: 1px solid rgba(201,168,76,0.15);
+      overflow: hidden;
+      position: relative;
+    }
+    .photo-slot img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .photo-slot-placeholder {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 0.75rem;
+      position: absolute; inset: 0;
+    }
+    .photo-slot.has-image .photo-slot-placeholder { display: none; }
+    .photo-paw { font-size: 2.5rem; opacity: 0.3; }
+    .photo-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.3em;
+      color: var(--gold);
+      opacity: 0.5;
+    }
+    .about-text p {
+      font-size: 1.2rem;
+      line-height: 1.9;
+      color: var(--silver);
+      margin-bottom: 1.4rem;
+      font-weight: 300;
+    }
+    .about-text p em { color: var(--gold-lt); font-style: italic; }
+    .stats-row {
+      display: flex; gap: 2.5rem;
+      margin-top: 2.5rem;
+      padding-top: 2rem;
+      border-top: 1px solid rgba(192,200,224,0.1);
+    }
+    .stat { text-align: center; }
+    .stat-num {
+      font-family: 'Cinzel', serif;
+      font-size: 2rem;
+      color: var(--gold);
+      display: block;
+    }
+    .stat-desc {
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      color: var(--silver);
+      opacity: 0.6;
+      margin-top: 0.25rem;
+    }
+
+    /* ─── GALLERY ─── */
+    #gallery {
+      padding: 100px 0;
+    }
+    .gallery-header { text-align: center; margin-bottom: 4rem; }
+    .gallery-header .divider { margin: 1.5rem auto 0; }
+
+    /* Upload area */
+    .upload-zone {
+      border: 2px dashed rgba(201,168,76,0.3);
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      margin-bottom: 3rem;
+      cursor: pointer;
+      transition: border-color 0.3s, background 0.3s;
+      background: rgba(201,168,76,0.02);
+    }
+    .upload-zone:hover {
+      border-color: rgba(201,168,76,0.6);
+      background: rgba(201,168,76,0.05);
+    }
+    .upload-zone input[type=file] { display: none; }
+    .upload-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .upload-text {
+      font-family: 'Cinzel', serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.25em;
+      color: var(--gold);
+      text-transform: uppercase;
+    }
+    .upload-sub {
+      font-size: 0.9rem;
+      color: var(--silver);
+      opacity: 0.5;
+      margin-top: 0.4rem;
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+    .gallery-item {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--deep);
+      border: 1px solid rgba(201,168,76,0.1);
+      cursor: pointer;
+      transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.4s;
+    }
+    .gallery-item:hover {
+      transform: translateY(-6px) scale(1.02);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 30px rgba(201,168,76,0.1);
+    }
+    .gallery-item img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transition: transform 0.6s;
+    }
+    .gallery-item:hover img { transform: scale(1.07); }
+    .gallery-item-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(8,9,15,0.8) 0%, transparent 50%);
+      opacity: 0;
+      transition: opacity 0.3s;
+      display: flex; align-items: flex-end;
+      padding: 1rem;
+    }
+    .gallery-item:hover .gallery-item-overlay { opacity: 1; }
+    .gallery-item-caption {
+      font-style: italic;
+      font-size: 0.9rem;
+      color: var(--cream);
+    }
+    .gallery-placeholder {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 0.5rem;
+    }
+    .gallery-placeholder .photo-paw { font-size: 2rem; }
+    .gallery-placeholder .photo-label { font-size: 0.6rem; }
+
+    /* Demo placeholders (6 slots) */
+    .gallery-demo-slots {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+    .gallery-demo-slot {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--navy), var(--deep));
+      border: 1px dashed rgba(201,168,76,0.2);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 0.5rem;
+      font-family: 'Cinzel', serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.25em;
+      color: rgba(201,168,76,0.35);
+    }
+
+    /* Lightbox */
+    #lightbox {
+      position: fixed; inset: 0;
+      background: rgba(8,9,15,0.96);
+      z-index: 9999;
+      display: none; align-items: center; justify-content: center;
+      backdrop-filter: blur(10px);
+    }
+    #lightbox.open { display: flex; }
+    #lightbox img {
+      max-width: 85vw;
+      max-height: 85vh;
+      object-fit: contain;
+      border-radius: 4px;
+      box-shadow: 0 0 80px rgba(0,0,0,0.8);
+    }
+    #lightbox-close {
+      position: absolute; top: 1.5rem; right: 2rem;
+      font-size: 2rem; color: var(--gold);
+      cursor: pointer; background: none; border: none;
+      font-family: 'Cinzel', serif;
+      transition: transform 0.2s;
+    }
+    #lightbox-close:hover { transform: rotate(90deg); }
+
+    /* ─── MEMORY GARDEN ─── */
+    #garden {
+      padding: 120px 0;
+      background: linear-gradient(to bottom, var(--night), var(--navy) 50%, var(--night));
+      overflow: hidden;
+    }
+    .garden-header { text-align: center; margin-bottom: 5rem; }
+    .garden-header .divider { margin: 1.5rem auto; }
+    .garden-intro {
+      font-size: 1.2rem;
+      font-style: italic;
+      color: var(--silver);
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.8;
+      opacity: 0.8;
+    }
+
+    .garden-path {
+      position: relative;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .garden-path::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0; bottom: 0;
+      width: 1px;
+      background: linear-gradient(to bottom, transparent, var(--gold) 15%, var(--gold) 85%, transparent);
+      transform: translateX(-50%);
+      opacity: 0.3;
+    }
+
+    .garden-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5rem;
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.8s, transform 0.8s;
+    }
+    .garden-item.visible { opacity: 1; transform: translateY(0); }
+    .garden-item:nth-child(even) { flex-direction: row-reverse; }
+
+    .garden-card {
+      width: 42%;
+      background: rgba(17,21,48,0.8);
+      border: 1px solid rgba(201,168,76,0.2);
+      border-radius: 12px;
+      padding: 2rem 2.2rem;
+      backdrop-filter: blur(8px);
+      position: relative;
+      transition: border-color 0.3s, transform 0.3s;
+    }
+    .garden-card:hover {
+      border-color: rgba(201,168,76,0.5);
+      transform: translateY(-4px);
+    }
+    .garden-card::before {
+      content: '';
+      position: absolute;
+      top: 50%; right: -1.5rem;
+      width: 1.5rem; height: 1px;
+      background: rgba(201,168,76,0.3);
+    }
+    .garden-item:nth-child(even) .garden-card::before {
+      right: auto; left: -1.5rem;
+    }
+    .garden-card-icon {
+      font-size: 2rem;
+      margin-bottom: 0.75rem;
+    }
+    .garden-card-title {
+      font-family: 'Cinzel', serif;
+      font-size: 1rem;
+      color: var(--gold);
+      margin-bottom: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+    .garden-card-text {
+      font-size: 1.05rem;
+      line-height: 1.8;
+      color: var(--silver);
+      font-style: italic;
+      font-weight: 300;
+    }
+    .garden-node {
+      width: 16%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .garden-node-dot {
+      width: 14px; height: 14px;
+      background: var(--gold);
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(201,168,76,0.6), 0 0 40px rgba(201,168,76,0.2);
+    }
+    .garden-spacer { width: 42%; }
+
+    /* Floating photo in garden */
+    .garden-photo {
+      width: 42%;
+      aspect-ratio: 4/5;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--navy), var(--deep));
+      border: 1px solid rgba(201,168,76,0.15);
+      overflow: hidden;
+      position: relative;
+    }
+    .garden-photo img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
+
+    /* ─── MEMORY BOOK ─── */
+    #memorybook {
+      padding: 120px 0 100px;
+      background: linear-gradient(to bottom, var(--night), var(--deep));
+    }
+    .book-header { text-align: center; margin-bottom: 4rem; }
+    .book-header .divider { margin: 1.5rem auto; }
+
+    .book-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: start;
+    }
+
+    /* Form */
+    .memory-form {
+      background: rgba(17,21,48,0.7);
+      border: 1px solid rgba(201,168,76,0.2);
+      border-radius: 16px;
+      padding: 2.5rem;
+      backdrop-filter: blur(8px);
+    }
+    .memory-form h3 {
+      font-family: 'Cinzel', serif;
+      font-size: 1.1rem;
+      color: var(--gold);
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.05em;
+    }
+    .form-group { margin-bottom: 1.25rem; }
+    .form-group label {
+      display: block;
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.3em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      background: rgba(8,9,15,0.6);
+      border: 1px solid rgba(192,200,224,0.15);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      color: var(--cream);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.3s;
+      resize: none;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      border-color: rgba(201,168,76,0.5);
+    }
+    .form-group select option { background: var(--deep); }
+    .form-group textarea { height: 130px; }
+    .submit-btn {
+      width: 100%;
+      padding: 1rem;
+      background: linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05));
+      border: 1px solid var(--gold);
+      border-radius: 8px;
+      color: var(--gold);
+      font-family: 'Cinzel', serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.3s, color 0.3s, transform 0.2s;
+    }
+    .submit-btn:hover {
+      background: linear-gradient(135deg, rgba(201,168,76,0.35), rgba(201,168,76,0.1));
+      transform: translateY(-2px);
+    }
+    .submit-btn:active { transform: translateY(0); }
+
+    /* Notes display */
+    .notes-wall { }
+    .notes-wall h3 {
+      font-family: 'Cinzel', serif;
+      font-size: 1.1rem;
+      color: var(--gold);
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.05em;
+    }
+    .notes-container {
+      display: flex; flex-direction: column; gap: 1rem;
+      max-height: 650px;
+      overflow-y: auto;
+      padding-right: 0.5rem;
+    }
+    .notes-container::-webkit-scrollbar { width: 3px; }
+    .notes-container::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.3); }
+
+    .note-card {
+      background: rgba(17,21,48,0.6);
+      border: 1px solid rgba(192,200,224,0.1);
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: border-color 0.3s;
+      animation: noteAppear 0.5s ease forwards;
+    }
+    .note-card:hover { border-color: rgba(201,168,76,0.3); }
+    .note-card.featured { border-color: rgba(201,168,76,0.3); }
+    .note-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 0.75rem;
+    }
+    .note-author {
+      font-family: 'Cinzel', serif;
+      font-size: 0.85rem;
+      color: var(--gold-lt);
+    }
+    .note-relation {
+      font-size: 0.75rem;
+      color: var(--silver);
+      opacity: 0.5;
+      font-style: italic;
+    }
+    .note-date {
+      font-size: 0.7rem;
+      color: var(--silver);
+      opacity: 0.4;
+      font-family: 'Cinzel', serif;
+    }
+    .note-text {
+      font-size: 1rem;
+      line-height: 1.75;
+      color: var(--silver);
+      font-style: italic;
+      font-weight: 300;
+    }
+    .note-icon {
+      text-align: right;
+      margin-top: 0.5rem;
+      font-size: 1rem;
+      opacity: 0.5;
+    }
+    .empty-notes {
+      text-align: center;
+      padding: 3rem;
+      color: var(--silver);
+      opacity: 0.4;
+      font-style: italic;
+    }
+    .empty-notes .paw { font-size: 2.5rem; margin-bottom: 1rem; }
+
+    /* ─── FOOTER ─── */
+    footer {
+      position: relative;
+      z-index: 1;
+      padding: 60px 2rem 40px;
+      text-align: center;
+      border-top: 1px solid rgba(192,200,224,0.08);
+    }
+    .footer-name {
+      font-family: 'Cinzel', serif;
+      font-size: 2rem;
+      color: var(--cream);
+      letter-spacing: 0.2em;
+      margin-bottom: 0.5rem;
+    }
+    .footer-dates {
+      font-style: italic;
+      color: var(--gold);
+      font-size: 1rem;
+      margin-bottom: 2rem;
+    }
+    .footer-quote {
+      font-size: 1.1rem;
+      font-style: italic;
+      color: var(--silver);
+      opacity: 0.6;
+      max-width: 500px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.8;
+    }
+    .footer-paws {
+      font-size: 1.4rem;
+      letter-spacing: 0.5rem;
+      opacity: 0.35;
+    }
+    .footer-copy {
+      margin-top: 2rem;
+      font-family: 'Cinzel', serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      color: var(--silver);
+      opacity: 0.25;
+    }
+
+    /* ─── Animations ─── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes scrollLine {
+      0%   { transform: scaleY(0); transform-origin: top; }
+      50%  { transform: scaleY(1); transform-origin: top; }
+      51%  { transform: scaleY(1); transform-origin: bottom; }
+      100% { transform: scaleY(0); transform-origin: bottom; }
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    @keyframes noteAppear {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    /* Reveal animation class */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.9s, transform 0.9s;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .reveal-delay-1 { transition-delay: 0.15s; }
+    .reveal-delay-2 { transition-delay: 0.3s; }
+    .reveal-delay-3 { transition-delay: 0.45s; }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      nav { padding: 1rem 1.5rem; }
+      .nav-links { gap: 1.5rem; }
+      .about-grid, .book-layout { grid-template-columns: 1fr; }
+      .about-photo-frame { max-width: 340px; margin: 0 auto; }
+      .garden-path::before { left: 1.5rem; }
+      .garden-item { flex-direction: column; }
+      .garden-item:nth-child(even) { flex-direction: column; }
+      .garden-card, .garden-photo, .garden-spacer { width: 100%; }
+      .garden-node { width: 100%; justify-content: flex-start; padding-left: 0.5rem; }
+      .garden-card::before, .garden-item:nth-child(even) .garden-card::before { display: none; }
+    }
+
+    /* ─── Upload Progress & Toast ─── */
+    .upload-progress {
+      display: none;
+      margin-top: 1rem;
+      background: rgba(17,21,48,0.8);
+      border: 1px solid rgba(201,168,76,0.2);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+    }
+    .upload-progress.active { display: block; }
+    .progress-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      color: var(--gold);
+      margin-bottom: 0.5rem;
+    }
+    .progress-bar-wrap {
+      background: rgba(192,200,224,0.1);
+      border-radius: 99px;
+      height: 4px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(to right, var(--gold), var(--gold-lt));
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 2rem; left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(17,21,48,0.95);
+      border: 1px solid rgba(201,168,76,0.4);
+      border-radius: 99px;
+      padding: 0.75rem 1.8rem;
+      font-family: 'Cinzel', serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      color: var(--gold);
+      z-index: 99998;
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s;
+      opacity: 0;
+      white-space: nowrap;
+      backdrop-filter: blur(12px);
+      pointer-events: none;
+    }
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    #toast.error { border-color: rgba(232,85,85,0.5); color: #e88585; }
+
+    /* Config warning banner */
+    #configBanner {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: linear-gradient(135deg, #1a0808, #2a1010);
+      border-bottom: 1px solid rgba(232,85,85,0.4);
+      padding: 0.8rem 2rem;
+      text-align: center;
+      font-family: 'Cinzel', serif;
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      color: #e8a0a0;
+      z-index: 9997;
+      display: none;
+    }
+    #configBanner.show { display: block; }
+    #configBanner strong { color: #f0d080; }
+  </style>
+</head>
+<body>
+
+  <!-- Config Warning Banner (shown if Supabase not configured) -->
+  <div id="configBanner">
+    ⚠️ &nbsp; <strong>Supabase henüz yapılandırılmadı.</strong> &nbsp; index.html içindeki
+    <strong>SUPABASE_URL</strong> ve <strong>SUPABASE_ANON_KEY</strong> değerlerini doldurun.
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast"></div>
+
+  <!--
+    ╔══════════════════════════════════════════╗
+    ║  MÜZİK KURULUMU:                         ║
+    ║  MP3 dosyasını index.html ile aynı       ║
+    ║  klasöre koyun, adı:                     ║
+    ║  shape-of-my-heart.mp3 olsun.            ║
+    ╚══════════════════════════════════════════╝
+  -->
+  <audio id="bgMusic" loop preload="none">
+    <source src="shape-of-my-heart.mp3" type="audio/mpeg" />
+  </audio>
+
+  <!-- ─── INTRO OVERLAY ─── -->
+  <div id="intro">
+    <canvas id="introStars"></canvas>
+
+    <!-- Pati: sağdan ekrana uzanıyor -->
+    <div class="intro-paw-wrap" id="introCatWrap">
+      <img
+        id="introPhoto"
+        src="photos/paw.png"
+        alt="Sherlock'un patisi"
+        onload="document.getElementById('introSvgFallback').style.display='none';"
+        onerror="this.style.display='none'; document.getElementById('introSvgFallback').style.display='block';"
+      />
+      <svg id="introSvgFallback" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="display:none; width:160px; height:auto;">
+        <defs>
+          <radialGradient id="catGrad" cx="50%" cy="40%" r="55%">
+            <stop offset="0%" stop-color="#2a2010" />
+            <stop offset="100%" stop-color="#0e0c06" />
+          </radialGradient>
+        </defs>
+        <!-- Basit pati şekli yedek -->
+        <ellipse cx="100" cy="130" rx="55" ry="45" fill="url(#catGrad)"/>
+        <ellipse cx="55"  cy="85"  rx="22" ry="18" fill="url(#catGrad)"/>
+        <ellipse cx="100" cy="72"  rx="22" ry="18" fill="url(#catGrad)"/>
+        <ellipse cx="145" cy="85"  rx="22" ry="18" fill="url(#catGrad)"/>
+        <polygon id="introStar" points="100,8 103,18 114,18 105,24 108,34 100,28 92,34 95,24 86,18 97,18" fill="rgba(201,168,76,0.0)"/>
+      </svg>
+    </div>
+
+    <!-- İsim + tarih — ekranın sol-orta alanı -->
+    <div class="intro-cat-wrap">
+      <div class="intro-glow-ring"></div>
+      <p class="intro-name">Sherlock</p>
+      <p class="intro-dates-small">21 Haziran 2020 &nbsp;·&nbsp; 3 Şubat 2026</p>
+    </div>
+
+    <div class="intro-hint">
+      <p class="intro-hint-text">Hatırlamak için dokun</p>
+      <div class="intro-hint-ring"></div>
+    </div>
+  </div>
+
+  <!-- Background Stars Canvas -->
+  <canvas id="starCanvas"></canvas>
+
+  <!-- Paw Print Trail Canvas -->
+  <canvas id="pawCanvas"></canvas>
+
+  <!-- Custom Cursor -->
+  <div id="cursor"></div>
+
+  <!-- Lightbox -->
+  <div id="lightbox">
+    <button id="lightbox-close">✕</button>
+    <img id="lightbox-img" src="" alt="" />
+  </div>
+
+  <!-- Navigation -->
+  <nav>
+    <a class="nav-logo" href="#hero">🐾 Sherlock</a>
+    <ul class="nav-links">
+      <li><a href="#about">Hakkında</a></li>
+      <li><a href="#gallery">Galeri</a></li>
+      <li><a href="#garden">Anı Bahçesi</a></li>
+      <li><a href="#memorybook">Anı Defteri</a></li>
+    </ul>
+  </nav>
+
+  <!-- ─── HERO ─── -->
+  <section id="hero">
+    <div class="hero-glow"></div>
+    <p class="hero-subtitle">Sevgiyle anıyoruz</p>
+    <h1 class="hero-title">Sherlock</h1>
+    <p class="hero-dates">21 Haziran 2020 &nbsp;·&nbsp; 3 Şubat 2026</p>
+    <p class="hero-tagline">Meraklı bir ruh, sıcacık bir mırıltı — koşulsuz sevginin sırrını çözen minik dedektif.</p>
+    <div class="scroll-hint">
+      <span>Kaydır</span>
+      <div class="line"></div>
+    </div>
+  </section>
+
+  <!-- ─── ABOUT ─── -->
+  <section id="about">
+    <div class="section-inner">
+      <div class="about-grid">
+
+        <div class="about-photo-frame reveal">
+          <!-- Replace src with your photo path: e.g. src="photos/sherlock-main.jpg" -->
+          <div class="photo-slot" id="mainPhotoSlot">
+            <img src="photos/sherlock-main.png" alt="Sherlock" id="mainPhotoImg"
+              onload="this.style.display='block'; document.getElementById('mainPhotoSlot').classList.add('has-image');"
+              onerror="this.style.display='none';"
+              style="display:block;" />
+            <div class="photo-slot-placeholder">
+              <span class="photo-paw">🐾</span>
+              <span class="photo-label">Fotoğraf Ekle</span>
+              <span style="font-size:0.7rem;color:var(--silver);opacity:0.4;margin-top:0.25rem;">src="photos/sherlock-main.png"</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="about-text">
+          <p class="section-label reveal">Sevgili kedimiz</p>
+          <h2 class="section-title reveal reveal-delay-1">Bir evcil hayvandan fazlası —<br /><em>ailenin bir parçası.</em></h2>
+          <div class="divider reveal reveal-delay-2"></div>
+          <p class="reveal reveal-delay-2">
+            Sherlock, <em>21 Haziran 2020</em>'de geniş ve meraklı gözleriyle hayatımıza girdi. Adını da bu meraklı doğasından aldı — her zaman araştırıyor, her zaman gözlemliyor, her zaman en sıcak kucağı bulup uzanıyordu.
+          </p>
+          <p class="reveal reveal-delay-2">
+            <em>Beş buçuk güzel yıl boyunca</em> gölgemiz, sırdaşımız, sabah saatimiz ve en büyük tesellimiz oldu. Tam olarak ne zaman ihtiyaç duyulduğunu hissedip oraya gelme konusunda eşsiz bir yeteneği vardı.
+          </p>
+          <p class="reveal reveal-delay-3">
+            <em>3 Şubat 2026</em>'da Gökkuşağı Köprüsü'nden geçti — geride daha sessiz bir ev, onu sevmiş olmanın dolgunluğunu taşıyan bir yürek ve şimdi onun nazik ışığını barındıran bir evren köşesi bıraktı.
+          </p>
+          <div class="stats-row reveal reveal-delay-3">
+            <div class="stat">
+              <span class="stat-num">5</span>
+              <span class="stat-desc">Yıl Sevgi</span>
+            </div>
+            <div class="stat">
+              <span class="stat-num">∞</span>
+              <span class="stat-desc">Paylaşılan Anı</span>
+            </div>
+            <div class="stat">
+              <span class="stat-num">🐾</span>
+              <span class="stat-desc">Kalpte Sonsuza Dek</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── GALLERY ─── -->
+  <section id="gallery">
+    <div class="section-inner">
+      <div class="gallery-header">
+        <p class="section-label reveal">Yakalanan Anlar</p>
+        <h2 class="section-title reveal reveal-delay-1">Fotoğraflarda Bir Hayat</h2>
+        <div class="divider reveal reveal-delay-2"></div>
+        <p style="font-style:italic;font-size:1.1rem;color:var(--silver);opacity:0.7;" class="reveal reveal-delay-2">
+          Her fotoğraf bir anıdır — Sherlock'un hikâyesini yaşatmak için fotoğraflarını yükle.
+        </p>
+      </div>
+
+      <!-- Upload Zone -->
+      <div class="upload-zone reveal" onclick="document.getElementById('photoUpload').click()">
+        <input type="file" id="photoUpload" accept="image/*" multiple onchange="handlePhotoUpload(event)" />
+        <div class="upload-icon">📷</div>
+        <p class="upload-text">Sherlock'un Fotoğraflarını Ekle</p>
+        <p class="upload-sub">Yüklemek için tıkla · JPG, PNG, WEBP desteklenir</p>
+      </div>
+      <div class="upload-progress" id="uploadProgress">
+        <div class="progress-label" id="progressLabel">Yükleniyor...</div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressBar"></div></div>
+      </div>
+
+      <!-- Dynamic Gallery Grid -->
+      <div class="gallery-grid" id="galleryGrid"></div>
+
+      <!-- Static placeholder slots shown before any uploads -->
+      <div class="gallery-demo-slots" id="demoSlots">
+        <div class="gallery-demo-slot reveal">🐾<br />Fotoğraf 1</div>
+        <div class="gallery-demo-slot reveal reveal-delay-1">🐾<br />Fotoğraf 2</div>
+        <div class="gallery-demo-slot reveal reveal-delay-2">🐾<br />Fotoğraf 3</div>
+        <div class="gallery-demo-slot reveal">🐾<br />Fotoğraf 4</div>
+        <div class="gallery-demo-slot reveal reveal-delay-1">🐾<br />Fotoğraf 5</div>
+        <div class="gallery-demo-slot reveal reveal-delay-2">🐾<br />Fotoğraf 6</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ─── MEMORY GARDEN ─── -->
+  <section id="garden">
+    <div class="section-inner">
+      <div class="garden-header">
+        <p class="section-label">Anıların İzinde Bir Yürüyüş</p>
+        <h2 class="section-title">Anı Bahçesi</h2>
+        <div class="divider"></div>
+        <p class="garden-intro">
+          Sherlock'u Sherlock yapan anlara açılan bir yol — ilk günden son güne, her adım merakla doluydu.
+        </p>
+      </div>
+
+      <div class="garden-path">
+
+        <!-- Item 1 -->
+        <div class="garden-item">
+          <div class="garden-card">
+            <div class="garden-card-icon">🌙</div>
+            <div class="garden-card-title">Evdeki İlk Gece</div>
+            <div class="garden-card-text">O kadar küçüktü ki bir avuca sığıyordu. İlk gecesini battaniyenin altına kıvrılıp geçirdi; mırıltısı o kadar yüksekti ki tüm oda duyabilirdi.</div>
+          </div>
+          <div class="garden-node"><div class="garden-node-dot"></div></div>
+          <div class="garden-spacer"></div>
+        </div>
+
+        <!-- Item 2 (photo) -->
+        <div class="garden-item">
+          <div class="garden-spacer"></div>
+          <div class="garden-node"><div class="garden-node-dot"></div></div>
+          <div class="garden-photo">
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:0.5rem;">
+              <span style="font-size:2rem;opacity:0.25;">📷</span>
+              <span style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.25em;color:var(--gold);opacity:0.4;">FOTOĞRAFIN</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 3 -->
+        <div class="garden-item">
+          <div class="garden-card">
+            <div class="garden-card-icon">🔍</div>
+            <div class="garden-card-title">Dedektif Dönemi</div>
+            <div class="garden-card-text">Adını hak etti. Her hışırdayan poşet, duvardaki her gölge — Sherlock davayı kapatmadan önce her şeyi iyice soruşturmak zorundaydı.</div>
+          </div>
+          <div class="garden-node"><div class="garden-node-dot"></div></div>
+          <div class="garden-spacer"></div>
+        </div>
+
+        <!-- Item 4 (photo) -->
+        <div class="garden-item">
+          <div class="garden-spacer"></div>
+          <div class="garden-node"><div class="garden-node-dot"></div></div>
+          <div class="garden-photo">
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:0.5rem;">
+              <span style="font-size:2rem;opacity:0.25;">📷</span>
+              <span style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.25em;color:var(--gold);opacity:0.4;">FOTOĞRAFIN</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 5 -->
+        <div class="garden-item">
+          <div class="garden-card">
+            <div class="garden-card-icon">☀️</div>
+            <div class="garden-card-title">Favori Güneş Işığı</div>
+            <div class="garden-card-text">Her öğleden sonra bir ritüeli vardı — yerdeki tek güneş ışığı lekesini bulup sıcak bal gibi içine çökmek, dünyayla barışık huzur içinde uzanmak.</div>
+          </div>
+          <div class="garden-node"><div class="garden-node-dot"></div></div>
+          <div class="garden-spacer"></div>
+        </div>
+
+        <!-- Item 6 -->
+        <div class="garden-item">
+          <div class="garden-spacer"></div>
+          <div class="garden-node"><div class="garden-node-dot"></div></div>
+          <div class="garden-card">
+            <div class="garden-card-icon">🌟</div>
+            <div class="garden-card-title">3 Şubat 2026</div>
+            <div class="garden-card-text">Her zaman nasıl yaşadıysa öyle sessizce ayrıldı — zarafetle. Artık en parlak yıldız o, sevdiği her şeye yukarıdan bakıyor.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── MEMORY BOOK ─── -->
+  <section id="memorybook">
+    <div class="section-inner">
+      <div class="book-header">
+        <p class="section-label reveal">Sözcüklerini Bırak</p>
+        <h2 class="section-title reveal reveal-delay-1">Anı Defteri</h2>
+        <div class="divider reveal reveal-delay-2"></div>
+        <p style="font-style:italic;font-size:1.1rem;color:var(--silver);opacity:0.7;" class="reveal reveal-delay-2">
+          Bir anı, bir dilek ya da sade bir veda paylaş. Sherlock'un defteri onu sevenlere açık.
+        </p>
+      </div>
+
+      <div class="book-layout">
+
+        <!-- Form -->
+        <div class="memory-form reveal">
+          <h3>✍️ Deftere Yaz</h3>
+          <div class="form-group">
+            <label>Adın</label>
+            <input type="text" id="noteAuthor" placeholder="ör. Teyze Ayşe" maxlength="50" />
+          </div>
+          <div class="form-group">
+            <label>Yakınlığın</label>
+            <select id="noteRelation">
+              <option value="Aile dostu">Aile dostu</option>
+              <option value="Aile üyesi">Aile üyesi</option>
+              <option value="Komşu">Komşu</option>
+              <option value="Kedi sevdalısı">Kedi sevdalısı</option>
+              <option value="Ziyaretçi">Ziyaretçi</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Anın veya Mesajın</label>
+            <textarea id="noteText" placeholder="Sherlock için bir anı, bir düşünce ya da veda paylaş..." maxlength="400"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Bir Sembol Seç</label>
+            <select id="noteIcon">
+              <option value="🌟">🌟 Yıldız</option>
+              <option value="🐾">🐾 Pati İzi</option>
+              <option value="🌙">🌙 Ay</option>
+              <option value="🌸">🌸 Çiçek</option>
+              <option value="💛">💛 Altın Kalp</option>
+              <option value="🕯️">🕯️ Mum</option>
+              <option value="🌿">🌿 Yaprak</option>
+            </select>
+          </div>
+          <button class="submit-btn" onclick="submitNote()">Anını Bırak</button>
+        </div>
+
+        <!-- Notes Display -->
+        <div class="notes-wall reveal reveal-delay-1">
+          <h3>📖 Sherlock İçin Bırakılan Mesajlar</h3>
+          <div class="notes-container" id="notesContainer">
+            <div class="empty-notes" id="emptyMsg">
+              <div class="paw">🐾</div>
+              <p>Henüz mesaj yok — Sherlock'un anı defterine ilk yazan sen ol.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── FOOTER ─── -->
+  <footer>
+    <div class="footer-name">Sherlock</div>
+    <div class="footer-dates">21 Haziran 2020 – 3 Şubat 2026</div>
+    <p class="footer-quote">
+      "Kaybolanların hepsi yolunu şaşırmış değildir — kimileri sadece bir güneş ışığının peşinden gider, bir gölgeyi kovalar ya da sessizce yanı başında bekler."
+    </p>
+    <div class="footer-paws">🐾 🐾 🐾 🐾 🐾</div>
+    <p class="footer-copy">Sevgiyle yapıldı &nbsp;·&nbsp; Kalpte sonsuza dek</p>
+  </footer>
+
+
+  <!-- ─── SCRIPTS ─── -->
+  <script>
+    /* ═══════════════════════════════════════
+       STAR CANVAS
+    ═══════════════════════════════════════ */
+    const starCanvas = document.getElementById('starCanvas');
+    const sc = starCanvas.getContext('2d');
+
+    function resizeStarCanvas() {
+      starCanvas.width  = window.innerWidth;
+      starCanvas.height = window.innerHeight;
+    }
+    resizeStarCanvas();
+    window.addEventListener('resize', () => { resizeStarCanvas(); initStars(); });
+
+    let stars = [];
+    function initStars() {
+      stars = [];
+      const count = Math.floor((starCanvas.width * starCanvas.height) / 3800);
+      for (let i = 0; i < count; i++) {
+        stars.push({
+          x: Math.random() * starCanvas.width,
+          y: Math.random() * starCanvas.height,
+          r: Math.random() * 1.5 + 0.3,
+          phase: Math.random() * Math.PI * 2,
+          speed: Math.random() * 0.008 + 0.003,
+          gold: Math.random() < 0.08, // some gold stars
+        });
+      }
+    }
+    initStars();
+
+    let starFrame = 0;
+    function drawStars() {
+      sc.clearRect(0, 0, starCanvas.width, starCanvas.height);
+      starFrame++;
+      stars.forEach(s => {
+        const flicker = 0.5 + 0.5 * Math.sin(starFrame * s.speed + s.phase);
+        sc.beginPath();
+        sc.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        if (s.gold) {
+          sc.fillStyle = `rgba(201,168,76,${0.4 + 0.6 * flicker})`;
+        } else {
+          sc.fillStyle = `rgba(192,200,224,${0.3 + 0.7 * flicker})`;
+        }
+        sc.fill();
+      });
+      requestAnimationFrame(drawStars);
+    }
+    drawStars();
+
+
+    /* ═══════════════════════════════════════
+       PAW PRINT CURSOR TRAIL — lightweight
+    ═══════════════════════════════════════ */
+    const pawCanvas = document.getElementById('pawCanvas');
+    const pc = pawCanvas.getContext('2d');
+    const cursor = document.getElementById('cursor');
+
+    function resizePawCanvas() {
+      pawCanvas.width  = window.innerWidth;
+      pawCanvas.height = window.innerHeight;
+    }
+    resizePawCanvas();
+    window.addEventListener('resize', resizePawCanvas);
+
+    // Offscreen paw — drawn once, stamped cheaply
+    const PAW_S = 18;
+    const oc = document.createElement('canvas');
+    oc.width = oc.height = PAW_S * 4;
+    const ox = oc.width / 2, oy = oc.height / 2;
+    const octx = oc.getContext('2d');
+    octx.fillStyle = '#c9a84c';
+    // main pad
+    octx.beginPath(); octx.ellipse(ox, oy + PAW_S*0.18, PAW_S*0.38, PAW_S*0.32, 0, 0, Math.PI*2); octx.fill();
+    // 4 toes
+    [[-0.34,-0.18],[-0.12,-0.38],[0.12,-0.38],[0.34,-0.18]].forEach(([tx,ty]) => {
+      octx.beginPath(); octx.ellipse(ox+tx*PAW_S, oy+ty*PAW_S, PAW_S*0.15, PAW_S*0.12, 0, 0, Math.PI*2); octx.fill();
+    });
+
+    let mX = 0, mY = 0, lX = 0, lY = 0;
+    let side = 1;
+    let paws = [];
+    const DIST = 45;   // mesafe eşiği
+    const MAX  = 22;   // max pati sayısı
+
+    // throttle mousemove with rAF flag
+    let rafPending = false;
+    document.addEventListener('mousemove', (e) => {
+      mX = e.clientX; mY = e.clientY;
+      cursor.style.left = mX + 'px';
+      cursor.style.top  = mY + 'px';
+      if (!rafPending) {
+        rafPending = true;
+        requestAnimationFrame(() => {
+          rafPending = false;
+          const dx = mX - lX, dy = mY - lY;
+          if (dx*dx + dy*dy >= DIST*DIST) {
+            const angle = Math.atan2(dy, dx) + Math.PI/2;
+            paws.push({ x: mX - Math.sin(angle)*side*9, y: mY + Math.cos(angle)*side*9, a: 0.75, r: angle });
+            if (paws.length > MAX) paws.shift();
+            lX = mX; lY = mY; side *= -1;
+          }
+        });
+      }
+    });
+
+    const hw = PAW_S * 2;
+    function animatePaws() {
+      pc.clearRect(0, 0, pawCanvas.width, pawCanvas.height);
+      for (let i = paws.length - 1; i >= 0; i--) {
+        const p = paws[i];
+        p.a -= 0.022;
+        if (p.a <= 0) { paws.splice(i, 1); continue; }
+        pc.save();
+        pc.globalAlpha = p.a;
+        pc.translate(p.x, p.y);
+        pc.rotate(p.r);
+        pc.drawImage(oc, -hw, -hw, PAW_S*4, PAW_S*4);
+        pc.restore();
+      }
+      requestAnimationFrame(animatePaws);
+    }
+    animatePaws();
+
+
+    /* ═══════════════════════════════════════
+       SCROLL REVEAL (IntersectionObserver)
+    ═══════════════════════════════════════ */
+    const revealEls = document.querySelectorAll('.reveal, .garden-item');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.12 });
+    revealEls.forEach(el => observer.observe(el));
+
+
+    /* ═══════════════════════════════════════
+       SUPABASE CONFIGURATION
+       ─────────────────────────────────────
+       Supabase kurulumu yaptıktan sonra
+       aşağıdaki iki değeri doldur:
+    ═══════════════════════════════════════ */
+    const SUPABASE_URL      = 'https://uwalzdisdfrjopcfcuuf.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3YWx6ZGlzZGZyam9wY2ZjdXVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyOTQxNDEsImV4cCI6MjA4Nzg3MDE0MX0.BbTRl2rzxenwzamSFJFV2y3OweTH2SwesepE_LpkyQU';
+    const STORAGE_BUCKET    = 'sherlock-photos';            // bucket adı
+    const NOTES_TABLE       = 'sherlock_notes';             // tablo adı
+
+    // Config kontrolü
+    const isConfigured = !SUPABASE_URL.includes('BURAYA') && !SUPABASE_ANON_KEY.includes('BURAYA');
+    if (!isConfigured) {
+      document.getElementById('configBanner').classList.add('show');
+    }
+
+    // Supabase client
+    const { createClient } = supabase;
+    const sb = isConfigured ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+
+    /* ─── TOAST helper ─── */
+    let toastTimer;
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'show' + (isError ? ' error' : '');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { t.className = ''; }, 3500);
+    }
+
+
+    /* ═══════════════════════════════════════
+       PHOTO GALLERY — Supabase Storage
+    ═══════════════════════════════════════ */
+
+    async function loadGallery() {
+      const grid = document.getElementById('galleryGrid');
+      const demo = document.getElementById('demoSlots');
+
+      if (!isConfigured) return; // göster: placeholder slotlar
+
+      try {
+        const { data, error } = await sb.storage.from(STORAGE_BUCKET).list('', {
+          limit: 100, sortBy: { column: 'created_at', order: 'desc' }
+        });
+        if (error) throw error;
+
+        const photos = (data || []).filter(f => f.name && !f.name.startsWith('.'));
+        if (photos.length === 0) { demo.style.display = 'grid'; return; }
+
+        demo.style.display = 'none';
+        grid.innerHTML = '';
+
+        photos.forEach((file, i) => {
+          const { data: urlData } = sb.storage.from(STORAGE_BUCKET).getPublicUrl(file.name);
+          const src = urlData.publicUrl;
+
+          const item = document.createElement('div');
+          item.className = 'gallery-item';
+          item.innerHTML = `
+            <img src="${src}" alt="Sherlock fotoğraf ${i+1}" loading="lazy" />
+            <div class="gallery-item-overlay">
+              <span class="gallery-item-caption">Sherlock 🐾</span>
+            </div>`;
+          item.addEventListener('click', () => openLightbox(src));
+          grid.appendChild(item);
+        });
+      } catch (err) {
+        console.error('Galeri yüklenemedi:', err);
+        showToast('Galeri yüklenirken hata oluştu.', true);
+      }
+    }
+    loadGallery();
+
+    async function handlePhotoUpload(e) {
+      if (!isConfigured) {
+        showToast('Önce Supabase yapılandırmasını tamamla.', true);
+        e.target.value = ''; return;
+      }
+
+      const files = Array.from(e.target.files);
+      if (!files.length) return;
+
+      const progress    = document.getElementById('uploadProgress');
+      const bar         = document.getElementById('progressBar');
+      const label       = document.getElementById('progressLabel');
+      progress.classList.add('active');
+
+      let done = 0;
+      for (const file of files) {
+        const ext      = file.name.split('.').pop();
+        const fileName = `photo_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+
+        label.textContent = `Yükleniyor: ${file.name}`;
+        bar.style.width   = `${Math.round((done / files.length) * 100)}%`;
+
+        const { error } = await sb.storage.from(STORAGE_BUCKET).upload(fileName, file, {
+          cacheControl: '3600', upsert: false
+        });
+
+        if (error) {
+          showToast(`Hata: ${file.name} yüklenemedi.`, true);
+        }
+        done++;
+        bar.style.width = `${Math.round((done / files.length) * 100)}%`;
+      }
+
+      label.textContent = 'Tamamlandı! ✨';
+      setTimeout(() => { progress.classList.remove('active'); bar.style.width = '0%'; }, 2000);
+
+      showToast(`${done} fotoğraf başarıyla yüklendi 🐾`);
+      e.target.value = '';
+      await loadGallery();
+    }
+
+    // Lightbox
+    const lightbox    = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightbox-img');
+    document.getElementById('lightbox-close').addEventListener('click', () => {
+      lightbox.classList.remove('open');
+    });
+    lightbox.addEventListener('click', e => {
+      if (e.target === lightbox) lightbox.classList.remove('open');
+    });
+    function openLightbox(src) {
+      lightboxImg.src = src;
+      lightbox.classList.add('open');
+    }
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') lightbox.classList.remove('open');
+    });
+
+
+    /* ═══════════════════════════════════════
+       MEMORY BOOK — Supabase Database
+    ═══════════════════════════════════════ */
+
+    // Varsayılan not yok — Supabase'den gelecek
+    const defaultNote = null;
+
+    async function loadNotes() {
+      const container = document.getElementById('notesContainer');
+      const emptyMsg  = document.getElementById('emptyMsg');
+
+      if (!isConfigured) {
+        // Supabase bağlı değil, boş göster
+        emptyMsg.style.display = 'block';
+        return;
+      }
+
+      container.innerHTML = '<div class="empty-notes"><div class="paw">🌟</div><p>Anılar yükleniyor...</p></div>';
+
+      try {
+        const { data, error } = await sb
+          .from(NOTES_TABLE)
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const notes = data && data.length > 0 ? data : [];
+        if (notes.length === 0) {
+          emptyMsg.style.display = 'block';
+          return;
+        }
+        emptyMsg.style.display = 'none';
+        container.innerHTML = '';
+        renderNoteCards(notes, container);
+
+      } catch (err) {
+        console.error('Notlar yüklenemedi:', err);
+        container.innerHTML = '';
+        emptyMsg.style.display = 'block';
+        showToast('Notlar yüklenirken sorun oluştu.', true);
+      }
+    }
+    loadNotes();
+
+    function renderNoteCards(notes, container) {
+      notes.forEach((n, i) => {
+        const dateStr = new Date(n.created_at).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+        const card = document.createElement('div');
+        card.className = 'note-card' + (i === 0 ? ' featured' : '');
+        card.innerHTML = `
+          <div class="note-header">
+            <div>
+              <div class="note-author">${escapeHtml(n.author)}</div>
+              <div class="note-relation">${escapeHtml(n.relation)}</div>
+            </div>
+            <div class="note-date">${dateStr}</div>
+          </div>
+          <div class="note-text">"${escapeHtml(n.note_text)}"</div>
+          <div class="note-icon">${n.icon}</div>`;
+        container.appendChild(card);
+      });
+    }
+
+    function escapeHtml(str) {
+      const d = document.createElement('div');
+      d.textContent = str || '';
+      return d.innerHTML;
+    }
+
+    async function submitNote() {
+      const author   = document.getElementById('noteAuthor').value.trim();
+      const relation = document.getElementById('noteRelation').value;
+      const text     = document.getElementById('noteText').value.trim();
+      const icon     = document.getElementById('noteIcon').value;
+      const btn      = document.querySelector('.submit-btn');
+
+      if (!author) { flashField('noteAuthor'); return; }
+      if (!text)   { flashField('noteText');   return; }
+
+      if (!isConfigured) {
+        showToast('Supabase yapılandırılmadan not kaydedilemez.', true);
+        return;
+      }
+
+      btn.textContent = 'Kaydediliyor...';
+      btn.disabled = true;
+
+      try {
+        const { error } = await sb.from(NOTES_TABLE).insert([{
+          author,
+          relation,
+          note_text: text,
+          icon,
+        }]);
+        if (error) throw error;
+
+        document.getElementById('noteAuthor').value = '';
+        document.getElementById('noteText').value   = '';
+        showToast('Anın Sherlock\'un defterine eklendi 🌟');
+        await loadNotes();
+
+      } catch (err) {
+        console.error('Not kaydedilemedi:', err);
+        showToast('Bir hata oluştu, tekrar dene.', true);
+      } finally {
+        btn.textContent = 'Anını Bırak';
+        btn.disabled = false;
+      }
+    }
+
+    function flashField(id) {
+      const el = document.getElementById(id);
+      el.style.borderColor = '#e85555';
+      el.focus();
+      setTimeout(() => { el.style.borderColor = ''; }, 1500);
+    }
+
+
+    /* ═══════════════════════════════════════
+       INTRO OVERLAY SYSTEM
+    ═══════════════════════════════════════ */
+
+    // Lock scroll during intro
+    document.body.classList.add('intro-active');
+
+    /* --- Intro star canvas --- */
+    const isc = document.getElementById('introStars');
+    const ic  = isc.getContext('2d');
+    isc.width  = window.innerWidth;
+    isc.height = window.innerHeight;
+    window.addEventListener('resize', () => {
+      isc.width  = window.innerWidth;
+      isc.height = window.innerHeight;
+    });
+
+    let introStars = [];
+    (function buildIntroStars() {
+      const count = Math.floor((isc.width * isc.height) / 2800);
+      for (let i = 0; i < count; i++) {
+        introStars.push({
+          x: Math.random() * isc.width,
+          y: Math.random() * isc.height,
+          r: Math.random() * 1.2 + 0.2,
+          phase: Math.random() * Math.PI * 2,
+          speed: Math.random() * 0.006 + 0.002,
+          gold: Math.random() < 0.1,
+        });
+      }
+    })();
+
+    let introFrame = 0;
+    let introRunning = true;
+    function drawIntroStars() {
+      if (!introRunning) return;
+      ic.clearRect(0, 0, isc.width, isc.height);
+      introFrame++;
+      introStars.forEach(s => {
+        const f = 0.4 + 0.6 * Math.sin(introFrame * s.speed + s.phase);
+        ic.beginPath();
+        ic.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ic.fillStyle = s.gold
+          ? `rgba(201,168,76,${0.35 + 0.65 * f})`
+          : `rgba(192,200,224,${0.25 + 0.55 * f})`;
+        ic.fill();
+      });
+      requestAnimationFrame(drawIntroStars);
+    }
+    drawIntroStars();
+
+    /* --- Animate the star above cat's head --- */
+    setTimeout(() => {
+      const starEl = document.getElementById('introStar');
+      if (starEl) {
+        let starAlpha = 0;
+        const starAnim = setInterval(() => {
+          starAlpha = Math.min(0.8, starAlpha + 0.015);
+          starEl.setAttribute('fill', `rgba(201,168,76,${starAlpha})`);
+          if (starAlpha >= 0.8) clearInterval(starAnim);
+        }, 40);
+      }
+    }, 2200);
+
+    /* --- Dust particles --- */
+    const introEl = document.getElementById('intro');
+    function spawnDust() {
+      if (!introRunning) return;
+      const p = document.createElement('div');
+      p.className = 'dust-particle';
+      const size = Math.random() * 3 + 1;
+      const dur  = Math.random() * 12 + 8;
+      const dx   = (Math.random() - 0.5) * 200;
+      p.style.cssText = `
+        width: ${size}px; height: ${size}px;
+        left: ${Math.random() * 100}%;
+        bottom: -10px;
+        --dx: ${dx}px;
+        animation-duration: ${dur}s;
+        animation-delay: ${Math.random() * 4}s;
+        opacity: 0;
+      `;
+      introEl.appendChild(p);
+      setTimeout(() => p.remove(), (dur + 4) * 1000);
+    }
+    for (let i = 0; i < 18; i++) setTimeout(spawnDust, i * 400);
+    const dustInterval = setInterval(spawnDust, 800);
+
+    /* --- Ripple on click/touch --- */
+    function createRipple(x, y) {
+      const r = document.createElement('div');
+      r.className = 'intro-ripple';
+      const size = 60;
+      r.style.cssText = `width:${size}px;height:${size}px;left:${x - size/2}px;top:${y - size/2}px;`;
+      introEl.appendChild(r);
+      setTimeout(() => r.remove(), 1300);
+    }
+
+    /* --- Music with fade-in --- */
+    const music = document.getElementById('bgMusic');
+    function startMusic() {
+      music.volume = 0;
+      music.play().catch(() => {}); // ignore autoplay blocks
+      let vol = 0;
+      const fade = setInterval(() => {
+        vol = Math.min(0.55, vol + 0.008);
+        music.volume = vol;
+        if (vol >= 0.55) clearInterval(fade);
+      }, 80);
+    }
+
+    /* --- Dismiss intro --- */
+    let introDismissed = false;
+    function dismissIntro(e) {
+      if (introDismissed) return;
+      introDismissed = true;
+
+      // Ripple at click point
+      const cx = e.clientX ?? (e.touches?.[0]?.clientX ?? window.innerWidth / 2);
+      const cy = e.clientY ?? (e.touches?.[0]?.clientY ?? window.innerHeight / 2);
+      createRipple(cx, cy);
+
+      // Start music
+      startMusic();
+
+      // Short delay then fade overlay
+      setTimeout(() => {
+        introEl.classList.add('hidden');
+        introRunning = false;
+        clearInterval(dustInterval);
+        document.body.classList.remove('intro-active');
+      }, 400);
+    }
+
+    introEl.addEventListener('click',     dismissIntro);
+    introEl.addEventListener('touchstart', dismissIntro, { passive: true });
+
+    /* ═══════════════════════════════════════
+       PARALLAX HERO GLOW
+    ═══════════════════════════════════════ */
+    const glow = document.querySelector('.hero-glow');
+    document.addEventListener('mousemove', e => {
+      const dx = (e.clientX / window.innerWidth  - 0.5) * 60;
+      const dy = (e.clientY / window.innerHeight - 0.5) * 60;
+      glow.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    });
+  </script>
+
+</body>
+</html>
